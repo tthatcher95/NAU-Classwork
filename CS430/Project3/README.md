@@ -1,4 +1,1 @@
-
-# NAU-Classwork
-=======
 The makefile did not work on my CPU due to a HEAP issue, but it should be the apprpriate everything. The math may also be off, and if this is not a sufficent README, there is one on the NAU-Classwork homepage dedicated to PRoject2
