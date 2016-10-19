@@ -27,7 +27,7 @@ double plane_intersection(double* Ro, double* Rd, Object* objIntersect) {
 
 double sphere_intersection(double *Ro, double *Rd, Object* objIntersect) {
   double r = objIntersect->sphere.radius;
-  double* C = objIntersect->sphere.center;
+  double* C = objIntersect->sphere.position;
   double a = sqr(Rd[0]) + sqr(Rd[1]) + sqr(Rd[2]);
 	double b =  2 * (Rd[0] * (Ro[0] - C[0]) + Rd[1] * (Ro[1] - C[1]) + Rd[2] * (Ro[2] - C[2]));
 	double c = sqr(Ro[0] - C[0]) + sqr(Ro[1] - C[1]) + sqr(Ro[2] - C[2]) - sqr(r);
@@ -67,7 +67,7 @@ Object* cast_ray(double* t, Object** objArray, Object* exclude, double* Ro, doub
       continue;
 
     } else {
-      fprintf(stderr, "Unknown Encounter");
+      fprintf(stderr, "Unknown Encounter\n");
       exit(1);
     }
     if(current_t < best_t && current_t != -1) {
@@ -118,15 +118,15 @@ Pixel** make_scene(Object** objects, int height, int width) {
   int M = height;
   int N = width;
 
-  Pixel** buffer = malloc(M * N * sizeof(Pixel));
+  Pixel** buffer = malloc(M * N * sizeof(Pixel*));
 
   double pixheight = h / M;
   double pixwidth = w / N;
 
- printf("%d %d\n", M, N);
+ //printf("%d %d\n", M, N);
 
-  for (int y = 0; y < M; y += 1) {
-    for (int x = 0; x < N; x += 1) {
+  for (int y = 0; y < M; y++) {
+    for (int x = 0; x < N; x++) {
       double Ro[3] = {0, 0, 0};
       // Rd = normalize(P - Ro)
       double Rd[3] = {cx - (w / 2) + pixwidth * (x + 0.5),
@@ -134,17 +134,17 @@ Pixel** make_scene(Object** objects, int height, int width) {
       normalize(Rd);
       //printf("Before\n");
       color = get_color(Ro, Rd, objects);
-      //printf("After\n");
+      //printf("After %d\n", y);
 
       Pixel* pix = malloc(sizeof(Pixel));
 
-      pix->r = color[0]*255;
-      pix->g = color[1]*255;
-      pix->b = color[2]*255;
+      pix->r = (unsigned char)color[0]*255;
+      pix->g = (unsigned char)color[1]*255;
+      pix->b = (unsigned char)color[2]*255;
       //Goes down 'y*N' times and over 'x' times
       buffer[y*N + x] = pix;
-    }
-  }
+    } //printf("%d", y);
+  } //printf("\nout");
   return buffer;
 }
 
@@ -161,11 +161,11 @@ int main(int argc, char *argv[]) {
   Object** objArray;
 
   objArray = read_scene(argv[3]);
-  printf("Read = Okay\n");
+  //printf("Read = Okay\n");
   buffer = make_scene(objArray, height, width);
-  printf("make = OKay\n");
+  //printf("make = OKay\n");
   FILE* fh = fopen(argv[4], "w");
   write_file(fh, buffer, height, width);
-  printf("PPM = Okay\n");
+  //printf("PPM = Okay\n");
   exit(0);
 }

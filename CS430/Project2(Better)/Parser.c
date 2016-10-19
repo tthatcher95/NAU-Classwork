@@ -197,16 +197,16 @@ Object** read_scene(char* filename) {
         }
 	  } else if ((strcmp(key, "color") == 0) ||
 		     (strcmp(key, "position") == 0) ||
-		     (strcmp(key, "normal") == 0) || (strcmp(key, "center") == 0)) {
+		     (strcmp(key, "normal") == 0)) {
           double* value = next_vector(json);
           if(strcmp(key, "color") == 0) {
             object->color = value;
-        } else if(strcmp(key, "position") == 0) {
+        } else if(strcmp(key, "position") == 0 && object->kind == plane_kind) {
             object->plane.position = value;
+        } else if(strcmp(key, "position") == 0 && object->kind == sphere_kind) {
+            object->sphere.position = value;
         } else if(strcmp(key, "normal") == 0) {
             object->plane.normal = value;
-        } else if(strcmp(key, "center") == 0) {
-            object->sphere.center = value;
         }
 	  } else {
 	    fprintf(stderr, "Error: Unknown property, \"%s\", on line %d.\n",

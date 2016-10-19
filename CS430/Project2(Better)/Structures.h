@@ -13,7 +13,7 @@ typedef struct {
       double height;
     } camera;
     struct { //2
-      double* center;
+      double* position;
       double radius;
     } sphere;
     struct { //3
