@@ -20,7 +20,10 @@ double plane_intersection(double* Ro, double* Rd, Object* objIntersect) {
   double* pos = objIntersect->plane.position;
   double t;
   t = (norm[0]*Ro[0] + norm[1]*Ro[1] + norm[2]*Ro[2]) + pos[0] + pos[1] + pos[2];
-  t = -t/(norm[0]*Rd[0] + norm[1]*Rd[1] + norm[2]*Rd[2]);
+  t = t/(norm[0]*Rd[0] + norm[1]*Rd[1] + norm[2]*Rd[2]);
+  if(t < 0) {
+    return -1;
+  }
   return t;
 
 }
@@ -93,7 +96,7 @@ double* get_color(double* Ro, double* Rd, Object** objArray) {
   Object* object = cast_ray(&t, objArray, NULL, Ro, Rd);
   if(t == -1) {
     return color;
-  }
+    }
   //printf("%lf %lf %lf\n", object->color[0], object->color[1], object->color[2]);
   //printf("%d", object->kind);
   //exit(0);
