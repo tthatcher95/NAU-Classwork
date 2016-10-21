@@ -1,18 +1,10 @@
-
+#include "Structures.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "ascii_tracer.c"
 
-
-//#include "Project1.c"
 int line = 1;
-
-int num_objects = 200;
-double** Store_Object;
-int num_iter = 0;
-
 
 // next_c() wraps the getc() function and provides error checking and line
 // number maintenance
@@ -81,13 +73,16 @@ char* next_string(FILE* json) {
     c = next_c(json);
   }
   buffer[i] = 0;
-  return (char*)strdup(buffer);
+  return strdup(buffer);
 }
 
 double next_number(FILE* json) {
   double value;
-  fscanf(json, "%f", &value);
-  // Error check this..
+  char error_check = fscanf(json, "%lf", &value);
+  if(error_check != 1) {
+    fprintf(stderr, "Incorrect Number\n");
+    exit(1);
+  }
   return value;
 }
 
@@ -110,23 +105,21 @@ double* next_vector(FILE* json) {
 }
 
 
-void read_scene(int height, int width, char* filename, char *outputfile) {
+Object** read_scene(char* filename, Object** lights) {
+  int lightindex = 0, index = 0;
   int c;
-  Store_Object = malloc(sizeof(double)*height);
-  objArray object;
-  object.Array = NULL;
-  object.objNumObj = 0;
-
-  //for(int i = 0; i < width; i++){
-    //Store_Object[i] = malloc(sizeof(double)*width);
-  //}
-
   FILE* json = fopen(filename, "r");
 
   if (json == NULL) {
     fprintf(stderr, "Error: Could not open file \"%s\"\n", filename);
     exit(1);
   }
+  Object** objArray = malloc(sizeof(Object*)*128);
+  Object** lights = malloc(sizeof(Object*)*128);
+
+  objArray[127] = NULL;
+  lights[127] = NULL;
+  Object* object;
 
   skip_ws(json);
 
@@ -139,11 +132,10 @@ void read_scene(int height, int width, char* filename, char *outputfile) {
 
   while (1) {
     c = fgetc(json);
-    int iterations = 0;
     if (c == ']') {
       fprintf(stderr, "Error: This is the worst scene file EVER.\n");
       fclose(json);
-      return;
+      return NULL;
     }
     if (c == '{') {
       skip_ws(json);
@@ -155,8 +147,6 @@ void read_scene(int height, int width, char* filename, char *outputfile) {
 	exit(1);
       }
 
-
-
       skip_ws(json);
 
       expect_c(json, ':');
@@ -165,23 +155,25 @@ void read_scene(int height, int width, char* filename, char *outputfile) {
 
       char* value = next_string(json);
 
-      // +1 Objects in the Array
-      object.objNumObj += 1;
-      // Realloc for the new array space
-      object.Array = realloc(object.Array, sizeof(Object)*object.objNumObj);
-      // Set type
-      object.Array[object.objNumObj - 1].type = value;
+      object = malloc(sizeof(Object));
 
       if (strcmp(value, "camera") == 0) {
-        Store_Object[num_iter][0] = 0; //Case = 0 'camera'
+        object->kind = camera_kind;
+        objArray[index++] = object;
       } else if (strcmp(value, "sphere") == 0) {
-        Store_Object[num_iter][0] = 1; //case = 1 'sphere'
+        object->kind = sphere_kind;
+        objArray[index++] = object;
       } else if (strcmp(value, "plane") == 0) {
-        Store_Object[num_iter][0] = 2; //case = 2 'plane'
-      } else {
-        	fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
-        	exit(1);
-              }
+        object->kind = plane_kind;
+        objArray[index++] = object;
+      } else if(strcmp(value, "light") == 0) {
+        object->kind = light_kind;
+        lights[lightindex++] = object;
+      }
+        else {
+	       fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
+	       exit(1);
+      }
 
       skip_ws(json);
 
@@ -191,71 +183,91 @@ void read_scene(int height, int width, char* filename, char *outputfile) {
 	if (c == '}') {
 	  // stop parsing this object
 	  break;
+
 	} else if (c == ',') {
 	  // read another field
 	  skip_ws(json);
 	  char* key = next_string(json);
-    printf("%c\n", c);
-    printf("%s\n", key);
 	  skip_ws(json);
 	  expect_c(json, ':');
 	  skip_ws(json);
-    //char* key = next_string(json);
-    printf("Right before storing widht\n");
-    if ((strcmp(key, "width") == 0) || (strcmp(key, "height") == 0) || (strcmp(key, "radius") == 0)) {
-      // store the val of camera.width, camera.height, or sphere.radius
-      double value = next_number(json);
-        if(value <= 0) {
-          fprintf(stderr, "Error the width - height - and radius must be greater than 0!\n");
-        } else {
-	         if (strcmp(key, "width") == 0) {
-      //Width = 1
-      object.Array[object.objNumObj - 1].camera.width = value;
-    //  Store_Object[num_iter][1] = value;
 
-    }
-        //height = 2
-	  else if (strcmp(key, "height") == 0) {
-        object.Array[object.objNumObj - 1].camera.height = value;
-        //Store_Object[num_iter][2];
+	  if ((strcmp(key, "width") == 0) ||
+	      (strcmp(key, "height") == 0) ||
+	      (strcmp(key, "radius") == 0) ||
+        (strcmp(key, "color") == 0) ||
+        (strcmp(key, "theta") == 0) ||
+        (strcmp(key, "radial-a2") == 0) ||
+        (strcmp(key, "radial-a1") == 0) ||
+        (strcmp(key, "radial-a0") == 0) ||
+        (strcmp(key, "angular-a0") == 0)||
+        (strcmp(key, "direction") == 0)) {
+	         double value = next_number(json);
 
+          if(strcmp(key, "width") == 0) {
+            object->camera.width = value;
+
+        } else if(strcmp(key, "height") == 0) {
+            object->camera.height = value;
+
+        } else if(strcmp(key, "radius") == 0) {
+            object->sphere.radius = value;
+
+        } else if(strcmp(key, "color") == 0) {
+            object->diffuse_color = value;
+
+        } else if(strcmp(key, "theta") == 0) {
+            object->light.theta = value;
+
+        } else if(strcmp(key, "direction") == 0) {
+            object->light.direction = value;
+
+        } else if(strcmp(key, "radial-a2") == 0) {
+            object->light.r2 = value;
+
+        } else if(strcmp(key, "radial-a1") == 0) {
+            object->light.r1 = value;
+
+        } else if(strcmp(key, "radial-a0") == 0) {
+            object->light.r0 = value;
+
+        } else if(strcmp(key, "angular-a0") == 0) {
+            object->light.a0 = value;
         }
-        //Radius = 3
-	  else if(strcmp(key, "radius") == 0) {
-          object.Array[object.objNumObj - 1].sphere.radius = value;
-          //Store_Object[num_iter][3];
-        }
-      }
-          //color = 4
-	  } else if ((strcmp(key, "color") == 0) || (strcmp(key, "position") == 0) || (strcmp(key, "normal") == 0)) {
+	  } else if ((strcmp(key, "diffuse_color") == 0) ||
+		     (strcmp(key, "position") == 0) ||
+		     (strcmp(key, "normal") == 0) || strcmp(key, "color") == 0) ||
+          (strcmp(key, "specular_color") == 0)) {
           double* value = next_vector(json);
-          if((strcmp(key, "color") == 0)) {
-          object.Array[object.objNumObj - 1].color[0] = value[0];
-          object.Array[object.objNumObj - 1].color[1] = value[1];
-          object.Array[object.objNumObj - 1].color[2] = value[2];
-          //Store_Object[num_iter][4];
+
+          if(strcmp(key, "diffuse_color") == 0) {
+            object->diffuse_color = value;
+
+        } else if(strcmp(key, "specular_color") == 0) {
+            object->specular_color = value;
+
+        } else if(strcmp(key, "color") == 0) {
+            object->diffuse_color = value;
+
+        } else if(strcmp(key, "position") == 0 && object->kind == plane_kind) {
+            object->plane.position = value;
+
+        } else if(strcmp(key, "position") == 0 && object->kind == sphere_kind) {
+            object->sphere.position = value;
+
+        } else if(strcmp(key, "position") == 0 && object->kind == light_kind) {
+            object->light.position = value;
+
+        } else if(strcmp(key, "normal") == 0) {
+            object->plane.normal = value;
         }
-
-          else if (strcmp(key, "position") == 0) {
-            object.Array[object.objNumObj - 1].sphere.center[0] = value[0];
-            object.Array[object.objNumObj - 1].sphere.center[1] = value[1];
-            object.Array[object.objNumObj - 1].sphere.center[2] = value[2];
-          }
-          else if(strcmp(key, "normal") == 0) {
-
-            object.Array[object.objNumObj - 1].plane.normal[0] = value[0];
-            object.Array[object.objNumObj - 1].plane.normal[1] = value[1];
-            object.Array[object.objNumObj - 1].plane.normal[2] = value[2];
-          }
 	  } else {
 	    fprintf(stderr, "Error: Unknown property, \"%s\", on line %d.\n",
 		    key, line);
 	    //char* value = next_string(json);
 	  }
 	  skip_ws(json);
-	 }
-  }
-} else {
+	} else {
 	  fprintf(stderr, "Error: Unexpected value on line %d\n", line);
 	  exit(1);
 	}
@@ -264,12 +276,16 @@ void read_scene(int height, int width, char* filename, char *outputfile) {
       c = next_c(json);
       if (c == ',') {
 	// noop
-	skip_ws(json);
+	    skip_ws(json);
       } else if (c == ']') {
-	fclose(json);
-	return;
+	        fclose(json);
+          objArray[index] = NULL;
+          lights[lightindex]
+	        return objArray;
       } else {
-	fprintf(stderr, "Error: Expecting ',' or ']' on line %d.\n", line);
-	exit(1);
-      }  num_iter+= 1;
+	       fprintf(stderr, "Error: Expecting ',' or ']' on line %d.\n", line);
+	       exit(1);
+      }
     }
+  }
+}

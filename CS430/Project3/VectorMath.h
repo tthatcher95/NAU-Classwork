@@ -36,3 +36,9 @@ static inline void v3_cross(V3 a, V3 b, V3 c) {
 size_t percentile_in_range(size_t min, size_t max, size_t val) {
   return (val - min)/(max - min);
 }
+
+static inline void v3_mult(V3 a, V3 b, V3 output) {
+  output[0] = b[0] * a[0];
+  output[1] = b[1] * a[1];
+  output[2] = b[2] * a[2];
+}

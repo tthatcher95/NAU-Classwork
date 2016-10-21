@@ -1,5 +1,5 @@
-all: ascii_tracer.c
-	gcc -std=gnu99 ascii_tracer.c -o raycast
+all: raycast.c
+	gcc -std=gnu99 raycast.c PPM_Conv.c Parser.c -o raycast
 
 clean:
-	rm -rf ascii_tracer *~
+	rm -rf raycast *~
