@@ -39,3 +39,24 @@ static inline void v3_mult(double* a, double* b, double* output) {
   output[1] = b[1] * a[1];
   output[2] = b[2] * a[2];
 }
+
+static inline double clamp_color_value(double a){
+  if(a < 0) {
+    a = 0;
+  } else if(a > 255) {
+    a = 255;
+  } return a;
+}
+
+static inline void reflection_vector(double* a, double* b, double* c) {
+  v3_scale(b, 2 * v3_dot(a, b), c);
+  v3_subtract(a, c, c);
+}
+
+static inline double max_val(double a, double b) {
+  if(a > b) {
+    return a;
+  } else {
+    return b;
+  }
+}

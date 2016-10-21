@@ -1,5 +1,5 @@
 
 # NAU-Classwork
 =======
-Sphere/Plane intersection using a raycaster in C.
+Sphere/Plane 3D-intersection with illumination using a raycaster in C.
 "make" to compile program --- raycast(non-Unix) || ./raycast(Unix) to run

@@ -60,7 +60,9 @@ Object* cast_ray(double* t, Object** objArray, Object* exclude, double* Ro, doub
   Object* best_object = NULL;
 
   for(int i = 0; objArray[i] != NULL; i++) {
-    if(objArray[i]->kind == plane_kind) {
+    if(objArray[i] == exclude) {
+      continue;
+    } else if(objArray[i]->kind == plane_kind) {
       //printf("Before\n");
       current_t = plane_intersection(Ro, Rd, objArray[i]);
       //printf("After\n");
@@ -102,7 +104,8 @@ void get_plane_normal(Object* object, double* normal) {
    memcpy(normal, object->plane.normal, sizeof(double)*3);
    normalize(normal);
 }
-void get_diffuse(double* total_diffuse_color, double* normal, double* light_direction, Object* object, Object* light) {
+ //*---------------Begin Diffuse Lighting Equations------------*//
+void get_diffuse(double* total_diffuse_color, double* normal, double* light_direction, Object* object, double* light_color) {
   double dot_product = v3_dot(light_direction, normal);
 
   if(dot_product <= 0) {
@@ -112,13 +115,29 @@ void get_diffuse(double* total_diffuse_color, double* normal, double* light_dire
   }
 
   v3_scale(object->diffuse_color, dot_product, total_diffuse_color);
-  v3_mult(light->diffuse_color, total_diffuse_color, total_diffuse_color);
+  v3_mult(light_color, total_diffuse_color, total_diffuse_color);
   //printf("%lf %lf %lf\n", total_diffuse_color[0], total_diffuse_color[1], total_diffuse_color[2]);
 
-}
+} //*--------------End Diffuse Lighting--------------*//
+
+//*---------------------*Begin Specular Lighting*------------------*//
+void get_specular(double* total_specular_color, double* normal, double* light_direction, Object* object, double* light_color, double* Rd) {
+  double ns = 20.0; //"Shininess"
+  double reflected_light_direction[3] = {0, 0, 0};
+  double negative_Rd[3] = {0, 0, 0};
+  double dot_product = 0;
+
+  reflection_vector(light_direction, normal, reflected_light_direction);
+  v3_scale(Rd, 1, negative_Rd);
+
+  //Returns the bigger value of the two (makes vector non-negative)
+  dot_product = max_val(v3_dot(reflected_light_direction, negative_Rd), 0);
+  dot_product = pow(dot_product, ns);
+  v3_scale(light_color, dot_product, total_specular_color);
+  v3_mult(total_specular_color, object->specular_color, total_specular_color);
+} //*------------End Specular---------*//
 
 double* get_color(double* Ro, double* Rd, Object** objArray, Object** lights) {
-  double ns = 20.0;
   double t = 0;
   double* color = malloc(sizeof(double)*3);
 
@@ -142,24 +161,55 @@ double* get_color(double* Ro, double* Rd, Object** objArray, Object** lights) {
     get_plane_normal(object, normal);
   }
 
-
-  //printf("%lf %lf %lf\n", object->color[0], object->color[1], object->color[2]);
-  //printf("%d", object->kind);
-  //exit(0);
-
   //Lighting work here
   double current_diffuse_color[3] = {0, 0, 0};
   double total_diffuse_color[3] = {0, 0, 0};
+  double current_specular_color[3] = {0, 0, 0};
+  double total_specular_color[3] = {0, 0, 0};
 
   for(int i = 0; lights[i] !=  NULL; i++) {
     double current_light_direction[3] = {0, 0, 0};
+    double current_light_color[3] = {0, 0, 0};
+    double light_object_intersection[3] = {0, 0, 0};
+
     v3_subtract(lights[i]->light.position, intersection, current_light_direction);
+
+    //Lightsource -> Intersection
+    double magnitude = sqrt(sqr(current_light_direction[0]) + sqr(current_light_direction[1]) + sqr(current_light_direction[2]));
     normalize(current_light_direction);
-    get_diffuse(current_diffuse_color, normal, current_light_direction, object, lights[i]);
+
+    //ShadowTests
+    Object* temp = cast_ray(&t, objArray, object, intersection, current_light_direction);
+    //printf("%lf\n", t);
+    if(t >= 0 && t < magnitude && temp->kind != plane_kind) {
+      //printf("%lf %d\n", t, temp->kind);
+      continue;
+    } //else if(t >= 0 && t < magnitude && temp->kind == plane_kind){
+      //printf("%d %d %lf %lf %lf %lf\n", object->kind, temp->kind, current_light_direction[0], current_light_direction[1], current_light_direction[2], t);
+    //}
+    //printf("%lf\n", t);
+    v3_scale(current_light_direction, -1, light_object_intersection);
+    if(lights[i]->light.direction != NULL) {
+      double dot_product = v3_dot(light_object_intersection, lights[i]->light.direction);
+      if((dot_product) < sin(lights[i]->light.theta*M_PI/180)) {
+        printf("%lf %lf\n", dot_product, lights[i]->light.theta*M_PI/180);
+        continue;
+      }
+      v3_scale(current_light_color, pow(dot_product, lights[i]->light.a0), current_light_color);
+    }
+    //Further away = less light number
+    double radial_a = 1/(sqr(magnitude)*(lights[i]->light.r2) + (lights[i]->light.r1)*magnitude + lights[i]->light.r0);
+    v3_scale(lights[i]->diffuse_color, radial_a, current_light_color);
+
+    get_diffuse(current_diffuse_color, normal, current_light_direction, object, current_light_color);
     v3_add(current_diffuse_color, total_diffuse_color, total_diffuse_color);
     //printf("%lf %lf %lf\n", color[0], color[1], color[2]);
+    get_specular(current_specular_color, normal, current_light_direction, object, current_light_color, Rd);
+    v3_add(current_specular_color, total_specular_color, total_specular_color);
+
   }
   v3_add(color, total_diffuse_color, color);
+  v3_add(color, total_specular_color, color);
   //printf("%lf %lf %lf\n", color[0], color[1], color[2]);
   return color;
 }
@@ -170,8 +220,9 @@ Pixel** make_scene(Object** objects, Object** lights, int height, int width) {
   //Take from camera
   double cx = 0;
   double cy = 0;
-  double h = 1;
-  double w = 1;
+  //Pixel Width/Height
+  double h = objects[0]->camera.height;
+  double w = objects[0]->camera.width;
   double* color;
 
   int M = height;
@@ -197,9 +248,9 @@ Pixel** make_scene(Object** objects, Object** lights, int height, int width) {
 
       Pixel* pix = malloc(sizeof(Pixel));
       //mprintf("%lf %lf %lf\n", color[0], color[1], color[2]);
-      pix->r = (unsigned char)(color[0]*255);
-      pix->g = (unsigned char)(color[1]*255);
-      pix->b = (unsigned char)(color[2]*255);
+      pix->r = (unsigned char)clamp_color_value(color[0]*255);
+      pix->g = (unsigned char)clamp_color_value(color[1]*255);
+      pix->b = (unsigned char)clamp_color_value(color[2]*255);
       //printf("%d %d %d\n", pix->r, pix->g, pix->b);
       //Goes down 'y*N' times and over 'x' times
       buffer[y*N + x] = pix;
