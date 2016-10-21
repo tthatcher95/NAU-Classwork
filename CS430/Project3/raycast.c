@@ -94,22 +94,26 @@ void get_intersection(double* val_intersect, double* Ro, double* Rd, double t) {
 }
 
 void get_sphere_normal(Object* object, double* val_intersect, double* normal){
-    v3_subtract(normal, val_intersect, object->sphere.position);
+    v3_subtract(val_intersect, object->sphere.position, normal);
     normalize(normal);
 }
 
 void get_plane_normal(Object* object, double* normal) {
    memcpy(normal, object->plane.normal, sizeof(double)*3);
+   normalize(normal);
 }
 void get_diffuse(double* total_diffuse_color, double* normal, double* light_direction, Object* object, Object* light) {
   double dot_product = v3_dot(light_direction, normal);
 
-  if(dot_product < 0) {
+  if(dot_product <= 0) {
     dot_product = 0;
+  } else {
+    //printf("%lf\n", dot_product);
   }
 
   v3_scale(object->diffuse_color, dot_product, total_diffuse_color);
   v3_mult(light->diffuse_color, total_diffuse_color, total_diffuse_color);
+  //printf("%lf %lf %lf\n", total_diffuse_color[0], total_diffuse_color[1], total_diffuse_color[2]);
 
 }
 
@@ -132,6 +136,12 @@ double* get_color(double* Ro, double* Rd, Object** objArray, Object** lights) {
   double normal[3] = {0, 0 ,0};
   get_intersection(intersection, Ro, Rd, t);
 
+  if(object->kind == sphere_kind) {
+    get_sphere_normal(object, intersection, normal);
+  } else if(object->kind == plane_kind) {
+    get_plane_normal(object, normal);
+  }
+
 
   //printf("%lf %lf %lf\n", object->color[0], object->color[1], object->color[2]);
   //printf("%d", object->kind);
@@ -139,16 +149,18 @@ double* get_color(double* Ro, double* Rd, Object** objArray, Object** lights) {
 
   //Lighting work here
   double current_diffuse_color[3] = {0, 0, 0};
-  double* total_diffuse_color;
+  double total_diffuse_color[3] = {0, 0, 0};
 
   for(int i = 0; lights[i] !=  NULL; i++) {
     double current_light_direction[3] = {0, 0, 0};
     v3_subtract(lights[i]->light.position, intersection, current_light_direction);
+    normalize(current_light_direction);
     get_diffuse(current_diffuse_color, normal, current_light_direction, object, lights[i]);
     v3_add(current_diffuse_color, total_diffuse_color, total_diffuse_color);
-
+    //printf("%lf %lf %lf\n", color[0], color[1], color[2]);
   }
   v3_add(color, total_diffuse_color, color);
+  //printf("%lf %lf %lf\n", color[0], color[1], color[2]);
   return color;
 }
 
@@ -184,10 +196,11 @@ Pixel** make_scene(Object** objects, Object** lights, int height, int width) {
       //printf("After %d\n", y);
 
       Pixel* pix = malloc(sizeof(Pixel));
-
-      pix->r = (unsigned char)color[0]*255;
-      pix->g = (unsigned char)color[1]*255;
-      pix->b = (unsigned char)color[2]*255;
+      //mprintf("%lf %lf %lf\n", color[0], color[1], color[2]);
+      pix->r = (unsigned char)(color[0]*255);
+      pix->g = (unsigned char)(color[1]*255);
+      pix->b = (unsigned char)(color[2]*255);
+      //printf("%d %d %d\n", pix->r, pix->g, pix->b);
       //Goes down 'y*N' times and over 'x' times
       buffer[y*N + x] = pix;
     } //printf("%d", y);
@@ -206,7 +219,7 @@ int main(int argc, char *argv[]) {
   width = atoi(argv[2]);
   Pixel** buffer;
   Object** objArray;
-  Object** lights;
+  Object** lights = malloc(sizeof(Object*)*128);
 
   objArray = read_scene(argv[3], lights);
   //printf("Read = Okay\n");

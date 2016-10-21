@@ -24,7 +24,7 @@ typedef struct {
     } plane;
       struct {
         double* position;
-        double direction;
+        double* direction;
         double theta;
         double r0;
         double r1;

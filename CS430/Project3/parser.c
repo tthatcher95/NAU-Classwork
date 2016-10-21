@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+//#define DEBUG
 
 int line = 1;
 
@@ -80,7 +81,7 @@ double next_number(FILE* json) {
   double value;
   char error_check = fscanf(json, "%lf", &value);
   if(error_check != 1) {
-    fprintf(stderr, "Incorrect Number\n");
+    fprintf(stderr, "Incorrect Number: %d\n", line);
     exit(1);
   }
   return value;
@@ -115,7 +116,6 @@ Object** read_scene(char* filename, Object** lights) {
     exit(1);
   }
   Object** objArray = malloc(sizeof(Object*)*128);
-  lights = malloc(sizeof(Object*)*128);
 
   objArray[127] = NULL;
   lights[127] = NULL;
@@ -199,8 +199,7 @@ Object** read_scene(char* filename, Object** lights) {
         (strcmp(key, "radial-a2") == 0) ||
         (strcmp(key, "radial-a1") == 0) ||
         (strcmp(key, "radial-a0") == 0) ||
-        (strcmp(key, "angular-a0") == 0)||
-        (strcmp(key, "direction") == 0)) {
+        (strcmp(key, "angular-a0") == 0)) {
 	         double value = next_number(json);
 
           if(strcmp(key, "width") == 0) {
@@ -215,10 +214,7 @@ Object** read_scene(char* filename, Object** lights) {
         } else if(strcmp(key, "theta") == 0) {
             object->light.theta = value;
 
-        } else if(strcmp(key, "direction") == 0) {
-            object->light.direction = value;
-
-        } else if(strcmp(key, "radial-a2") == 0) {
+        }  else if(strcmp(key, "radial-a2") == 0) {
             object->light.r2 = value;
 
         } else if(strcmp(key, "radial-a1") == 0) {
@@ -234,11 +230,15 @@ Object** read_scene(char* filename, Object** lights) {
 		     (strcmp(key, "position") == 0) ||
 		     (strcmp(key, "normal") == 0) ||
          (strcmp(key, "color") == 0) ||
-         (strcmp(key, "specular_color") == 0)) {
+         (strcmp(key, "specular_color") == 0) ||
+         (strcmp(key, "direction") == 0)) {
           double* value = next_vector(json);
 
           if(strcmp(key, "diffuse_color") == 0) {
             object->diffuse_color = value;
+
+        } else if(strcmp(key, "direction") == 0) {
+            object->light.direction = value;
 
         } else if(strcmp(key, "specular_color") == 0) {
             object->specular_color = value;
@@ -277,7 +277,7 @@ Object** read_scene(char* filename, Object** lights) {
       } else if (c == ']') {
 	        fclose(json);
           objArray[index] = NULL;
-          lights[lightindex];
+          lights[lightindex] = NULL;
 	        return objArray;
       } else {
 	       fprintf(stderr, "Error: Expecting ',' or ']' on line %d.\n", line);
