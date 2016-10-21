@@ -115,7 +115,7 @@ Object** read_scene(char* filename, Object** lights) {
     exit(1);
   }
   Object** objArray = malloc(sizeof(Object*)*128);
-  Object** lights = malloc(sizeof(Object*)*128);
+  lights = malloc(sizeof(Object*)*128);
 
   objArray[127] = NULL;
   lights[127] = NULL;
@@ -195,7 +195,6 @@ Object** read_scene(char* filename, Object** lights) {
 	  if ((strcmp(key, "width") == 0) ||
 	      (strcmp(key, "height") == 0) ||
 	      (strcmp(key, "radius") == 0) ||
-        (strcmp(key, "color") == 0) ||
         (strcmp(key, "theta") == 0) ||
         (strcmp(key, "radial-a2") == 0) ||
         (strcmp(key, "radial-a1") == 0) ||
@@ -212,9 +211,6 @@ Object** read_scene(char* filename, Object** lights) {
 
         } else if(strcmp(key, "radius") == 0) {
             object->sphere.radius = value;
-
-        } else if(strcmp(key, "color") == 0) {
-            object->diffuse_color = value;
 
         } else if(strcmp(key, "theta") == 0) {
             object->light.theta = value;
@@ -236,8 +232,9 @@ Object** read_scene(char* filename, Object** lights) {
         }
 	  } else if ((strcmp(key, "diffuse_color") == 0) ||
 		     (strcmp(key, "position") == 0) ||
-		     (strcmp(key, "normal") == 0) || strcmp(key, "color") == 0) ||
-          (strcmp(key, "specular_color") == 0)) {
+		     (strcmp(key, "normal") == 0) ||
+         (strcmp(key, "color") == 0) ||
+         (strcmp(key, "specular_color") == 0)) {
           double* value = next_vector(json);
 
           if(strcmp(key, "diffuse_color") == 0) {
@@ -280,7 +277,7 @@ Object** read_scene(char* filename, Object** lights) {
       } else if (c == ']') {
 	        fclose(json);
           objArray[index] = NULL;
-          lights[lightindex]
+          lights[lightindex];
 	        return objArray;
       } else {
 	       fprintf(stderr, "Error: Expecting ',' or ']' on line %d.\n", line);

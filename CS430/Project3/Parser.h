@@ -1,2 +1,2 @@
 #include "Structures.h"
-Object** read_scene(char*);
+Object** read_scene(char*, Object**);

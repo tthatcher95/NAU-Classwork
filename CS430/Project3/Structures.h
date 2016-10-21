@@ -22,7 +22,6 @@ typedef struct {
       double* normal;
       double* position;
     } plane;
-    {
       struct {
         double* position;
         double direction;
@@ -32,7 +31,6 @@ typedef struct {
         double r2;
         double a0;
       } light;
-    }
   };
 } Object;
 

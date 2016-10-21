@@ -94,14 +94,14 @@ void get_intersection(double* val_intersect, double* Ro, double* Rd, double t) {
 }
 
 void get_sphere_normal(Object* object, double* val_intersect, double* normal){
-    v3_subtract(normal, val_intersect, objIntersect->sphere.position);
+    v3_subtract(normal, val_intersect, object->sphere.position);
     normalize(normal);
 }
 
 void get_plane_normal(Object* object, double* normal) {
-   memcpy(normal, objIntersect->plane.normal, sizeof(double)*3);
+   memcpy(normal, object->plane.normal, sizeof(double)*3);
 }
-void get_diffuse(double total_diffuse_color, double* normal, double* light_direction, Object* object, Object* light) {
+void get_diffuse(double* total_diffuse_color, double* normal, double* light_direction, Object* object, Object* light) {
   double dot_product = v3_dot(light_direction, normal);
 
   if(dot_product < 0) {
@@ -137,17 +137,18 @@ double* get_color(double* Ro, double* Rd, Object** objArray, Object** lights) {
   //printf("%d", object->kind);
   //exit(0);
 
-  color[0] = object->color[0];
-  color[1] = object->color[1];
-  color[2] = object->color[2];
   //Lighting work here
-  double* current_diffuse_color;
+  double current_diffuse_color[3] = {0, 0, 0};
   double* total_diffuse_color;
+
   for(int i = 0; lights[i] !=  NULL; i++) {
-    get_diffuse()
+    double current_light_direction[3] = {0, 0, 0};
+    v3_subtract(lights[i]->light.position, intersection, current_light_direction);
+    get_diffuse(current_diffuse_color, normal, current_light_direction, object, lights[i]);
+    v3_add(current_diffuse_color, total_diffuse_color, total_diffuse_color);
+
   }
-
-
+  v3_add(color, total_diffuse_color, color);
   return color;
 }
 
@@ -209,7 +210,7 @@ int main(int argc, char *argv[]) {
 
   objArray = read_scene(argv[3], lights);
   //printf("Read = Okay\n");
-  buffer = make_scene(objArray, height, width);
+  buffer = make_scene(objArray, lights, height, width);
   //printf("make = OKay\n");
   FILE* fh = fopen(argv[4], "w");
   write_file(fh, buffer, height, width);
